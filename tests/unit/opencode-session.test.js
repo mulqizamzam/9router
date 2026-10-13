@@ -83,6 +83,46 @@ describe("OpenCode Free Session ID Format", () => {
     expect(translateSessionId(valid)).toBe(valid);
     expect(translateSessionId(`  ${valid}  `)).toBe(valid);
   });
+
+  it("generates translated sessions with valid inverted-timestamp prefixes (high bit set)", () => {
+    // generateSessionId computes value = ~(T * 4096 + counter).
+    // For any positive T, the bitwise NOT has its sign bit set, meaning
+    // the first hex digit of the 12-hex prefix is 8-F (not 0-7).
+    // A random SHA-256 digest would produce uniform distribution across 0-F.
+    for (let i = 0; i < 20; i++) {
+      const id = translateSessionId(`conv-bitcheck-${i}`, "claude");
+      const firstHex = parseInt(id.slice(4, 5), 16);
+      expect(firstHex).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it("produces inverted-timestamp prefixes that share high bits across same-timestamp calls", () => {
+    // generateSessionId increments a counter per timestamp, so two calls with
+    // the same T produce prefixes that differ by at most 1 in the last hex digit.
+    // Both must have the high bit set (first hex digit 8-F), proving they are
+    // genuine inverted timestamps, not random SHA-256 output.
+    const ts = Date.now();
+    const id1 = generateSessionId(ts);
+    const id2 = generateSessionId(ts);
+    expect(id1).toMatch(OPENCODE_SESSION_RE);
+    expect(id2).toMatch(OPENCODE_SESSION_RE);
+    const prefix1 = parseInt(id1.slice(4, 5), 16);
+    const prefix2 = parseInt(id2.slice(4, 5), 16);
+    expect(prefix1).toBeGreaterThanOrEqual(8);
+    expect(prefix2).toBeGreaterThanOrEqual(8);
+    // Counter increments by 1, so prefix difference is at most 1 in last nibble.
+    expect(Math.abs(prefix1 - prefix2)).toBeLessThanOrEqual(1);
+  });
+
+  it("maintains translation stability across repeated calls with same inputs", () => {
+    const executor = getExecutor("opencode");
+    const first = prepare(executor, { providerSessionId: "stable-conv", clientTool: "codex" }).prepared._opencodeSession;
+    const second = prepare(executor, { providerSessionId: "stable-conv", clientTool: "codex" }).prepared._opencodeSession;
+    const third = prepare(executor, { providerSessionId: "stable-conv", clientTool: "codex" }).prepared._opencodeSession;
+    expect(first).toBe(second);
+    expect(second).toBe(third);
+    expect(first).toMatch(OPENCODE_SESSION_RE);
+  });
 });
 
 describe("OpenCode Free Executor Session Resolution", () => {

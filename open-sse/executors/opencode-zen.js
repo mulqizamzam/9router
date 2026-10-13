@@ -61,20 +61,27 @@ export function generateRequestId(timestamp = Date.now()) {
   return `msg_${time}${unstableRandom()}`;
 }
 
+// Translates arbitrary downstream session IDs into OpenCode-compatible ses_ IDs
+// whose 12-hex prefix is a genuine inverted timestamp (required by Zen validation).
+// Caches the mapping so the same downstream identity always gets the same upstream
+// session across requests, preserving multi-turn conversation state.
+const translatedSessionCache = new Map();
+const MAX_TRANSLATED_SESSIONS = 1000;
+
 export function translateSessionId(sessionId, clientTool = "") {
   if (typeof sessionId === "string" && OPENCODE_SESSION_RE.test(sessionId.trim())) {
     return sessionId.trim();
   }
-  const digest = crypto
-    .createHash("sha256")
-    .update(`opencode\0${clientTool || "generic"}\0${sessionId || ""}`)
-    .digest();
-  const timeHex = digest.subarray(0, 6).toString("hex");
-  let randomPart = "";
-  for (let i = 6; i < 20; i++) {
-    randomPart += BASE62_CHARS[digest[i] % 62];
+  const key = `opencode:ses:${clientTool || "generic"}:${sessionId || ""}`;
+  const cached = translatedSessionCache.get(key);
+  if (cached) return cached;
+  const generated = generateSessionId();
+  if (translatedSessionCache.size >= MAX_TRANSLATED_SESSIONS) {
+    const oldestKey = translatedSessionCache.keys().next().value;
+    translatedSessionCache.delete(oldestKey);
   }
-  return `ses_${timeHex}${randomPart}`;
+  translatedSessionCache.set(key, generated);
+  return generated;
 }
 
 function toolNameOf(tool) {
