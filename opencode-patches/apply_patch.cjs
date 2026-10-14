@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+// Re-apply the opencode /inference/v1 bundle patch to a 9router npm install.
+// Usage: node apply_patch.cjs <9router-root>
+// Data: patch_data.json (sibling file) — verified-good byte sequences.
+// Idempotent; aborts without writing if a needle drifts (version mismatch).
+const fs = require('fs'), path = require('path');
+const root = process.argv[2];
+if (!root) { console.error('usage: node apply_patch.cjs <9router-root>'); process.exit(2); }
+const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'patch_data.json'), 'utf8'));
+const p5330 = path.join(root, 'app/.next-cli-build/server/chunks/5330.js');
+const p8499 = path.join(root, 'app/.next-cli-build/server/chunks/8499.js');
+for (const p of [p5330, p8499]) if (!fs.existsSync(p)) { console.error('missing', p); process.exit(1); }
+
+function subOnce(src, from, to, label) {
+  const n = src.split(from).length - 1;
+  if (n === 0) { console.log('SKIP [' + label + '] already patched'); return src; }
+  if (n !== 1) { console.error('FATAL [' + label + ']: ' + n + ' occurrences - bundle version mismatch'); process.exit(1); }
+  console.log('OK   [' + label + ']');
+  return src.replace(from, to);
+}
+
+let s = fs.readFileSync(p5330, 'utf8');
+for (const r of data.p5330.replacements) s = subOnce(s, r.from, r.to, r.label);
+const patched5330 = s !== fs.readFileSync(p5330, 'utf8');
+if (patched5330) fs.writeFileSync(p5330, s);
+
+s = fs.readFileSync(p8499, 'utf8');
+if (s.includes('placeholder that does nothing')) {
+  console.log('SKIP 8499.js already patched');
+} else {
+  const m = s.indexOf('60210:(a,b,c)=>{');
+  if (m < 0) { console.error('FATAL: module 60210 not found'); process.exit(1); }
+  let i = s.indexOf('=>{', m) + 2, depth = 0, inS = null, end = -1;
+  for (; i < s.length; i++) {
+    const ch = s[i];
+    if (inS) { if (ch === inS && s[i-1] !== '\\') inS = null; continue; }
+    if (ch === '"' || ch === "'" || ch === '`') { inS = ch; continue; }
+    if (ch === '{') depth++;
+    else if (ch === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+  }
+  if (end < 0) { console.error('FATAL: module 60210 end not found'); process.exit(1); }
+  s = s.slice(0, m) + data.p8499.newModule60210 + s.slice(end);
+  fs.writeFileSync(p8499, s);
+  console.log('WROTE', p8499);
+}
+console.log('DONE. Verify: node --check ' + p5330 + ' ' + p8499 + ' && node proof_test.cjs');
