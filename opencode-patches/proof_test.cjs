@@ -6,7 +6,10 @@
 // Fails on the unpatched chunks, passes on the patched ones.
 const fs = require('fs');
 
-const CHUNKS = '/mnt/c/Users/Administrator/AppData/Roaming/npm/node_modules/9router/app/.next-cli-build/server/chunks';
+// Override the chunk directory to prove the regression checks below fail on an
+// unpatched bundle: NINE_ROUTER_CHUNKS=<dir with the old 8499.js> node proof_test.cjs
+const CHUNKS = process.env.NINE_ROUTER_CHUNKS
+  || '/mnt/c/Users/Administrator/AppData/Roaming/npm/node_modules/9router/app/.next-cli-build/server/chunks';
 const c8499 = fs.readFileSync(`${CHUNKS}/8499.js`, 'utf8');
 const c5330 = fs.readFileSync(`${CHUNKS}/5330.js`, 'utf8');
 
@@ -96,6 +99,18 @@ if (m >= 0) {
   const map5 = new Map([['read_client', 'read']]);
   const restored = HR({ output: [{ type: 'function_call', name: 'read_client', arguments: '{}' }] }, map5);
   check('HR restores output function_call names', restored.output[0].name === 'read');
+
+  // (f) REGRESSION: the alias map can be lost. LLM retries rebuild the request body,
+  // so the WeakMap lookup in g4() misses and callers hand HR a null/empty map; a
+  // stateless caller never had one. Before the fix HR returned the payload untouched
+  // and the client received a tool name it never declared -> 'unknown tool "read_client"'.
+  const resp = () => ({ output: [{ type: 'function_call', name: 'read_client', arguments: '{}' }] });
+  const noMap = HR(resp(), null);
+  check('HR restores alias when map is null', noMap.output[0].name === 'read', noMap.output[0].name);
+  const emptyMap = HR(resp(), new Map());
+  check('HR restores alias when map is empty', emptyMap.output[0].name === 'read', emptyMap.output[0].name);
+  const numbered = HR({ output: [{ type: 'function_call', name: 'read_client2', arguments: '{}' }] }, null);
+  check('HR restores numbered alias', numbered.output[0].name === 'read', numbered.output[0].name);
 
   // (e) history aliasing: prior-turn calls renamed to the alias
   const body6 = {
