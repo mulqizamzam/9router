@@ -135,6 +135,15 @@ const sseAt = c8895.indexOf('k=k.map(s=>s.replace(');
 check('8895.js carries an SSE alias post-pass', sseAt >= 0);
 check('SSE post-pass sits before the [DONE] sentinel',
   sseAt >= 0 && c8895.indexOf('k.push("data: [DONE]', sseAt) > sseAt);
+// The SSE builder must still RETURN its response object. An earlier revision of this
+// patch replaced `return k.push(...)` with a bare statement, which would have made the
+// streaming path return undefined. Slicing only the rewrite statement cannot see that,
+// so the surrounding return is asserted here.
+check('SSE post-pass keeps the return',
+  sseAt < 0 || /return k=k\.map\(s=>s\.replace\(/.test(c8895),
+  sseAt < 0 ? 'not applicable' : 'return keyword missing');
+check('SSE builder still returns its response',
+  /return k=k\.map\([\s\S]{0,400}?response:new Response\(k\.join\(""\)/.test(c8895));
 
 const sseChunk =
   '{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function",' +

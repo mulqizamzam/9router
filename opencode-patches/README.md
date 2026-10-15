@@ -91,3 +91,26 @@ persisted. Point it at an older chunk to confirm the new checks fail:
 `apply_patch.cjs` was extended to apply `p8895.replacements` to `8895.js`, idempotent
 and aborting on anchor drift like the other targets.
 
+
+### Correction: the rewrite must stay inside the `return`
+
+The first revision of this patch replaced
+
+```js
+return k.push("data: [DONE]\n\n"),
+```
+
+with a bare statement, dropping the `return`. The SSE builder would then have returned
+`undefined` and every streaming response would have been empty after a restart.
+
+The rewrite is now prepended to the returned expression's operand instead:
+
+```js
+return k=k.map(s=>s.replace(...)),k.push("data: [DONE]\n\n"),
+```
+
+`proof_test.cjs` slices only the rewrite statement, so it could not see the missing
+`return`; two checks now assert it directly (`SSE post-pass keeps the return`,
+`SSE builder still returns its response`), and a third variant is kept as evidence:
+
+    NINE_ROUTER_CHUNKS=<dir with the broken 8895.js> node proof_test.cjs   # 2 FAILURES
