@@ -46,3 +46,48 @@ They fail on the pre-fix bundle and pass on the patched one. Point them at an ol
 chunk to confirm:
 
     NINE_ROUTER_CHUNKS=/path/to/old/chunks node proof_test.cjs
+## SSE tool-alias leak fix (module 60210 + chunk 8895.js)
+
+Caller tools that collide with the fingerprint quartet are aliased on the way out
+(`read` -> `read_client`). The reverse rename ran in module 60210's `HR`, but only at
+four NON-streaming sites in `8895.js`, each shaped
+`new Response(JSON.stringify((0,X.HR)(payload, map)), ...)`.
+
+The streaming path assembles its body separately:
+
+```js
+function l(a,b,c){
+  let d=j(b,c), g=(0,e.Ws)(a); g.model=b;
+  let i=m(d), k=[];
+  for(let b of i){
+    let c=(0,e.Y8)(f.h.OPENAI,a,b,g);
+    if(c?.length>0) for(let b of c) k.push((0,h.v8)(b,a))   // <- no rewrite here
+  }
+  ...
+  new Response(k.join(""), {headers:{"Content-Type":"text/event-stream",...}})
+}
+```
+
+Any client that streams `openai-completions` therefore received a tool name it never
+declared, which it answers with `unknown tool "read_client"`.
+
+The alias is reversible by construction, so the fix needs no state and no module-scope
+variable: one post-pass over the assembled lines, anchored immediately before the
+`[DONE]` sentinel.
+
+```js
+k=k.map(s=>s.replace(/"name":"((?:read|shell)_client\d*)"/g,(m,n)=>'"name":"'+n.replace(/_client\d*$/,"")+'"')),
+```
+
+Only `read`/`shell` aliases match, so `bash`, `glob`, `Read`, `read_client_extra`,
+`my_client` and every other tool pass through byte-identical.
+
+`proof_test.cjs` now covers the streaming path too. Its earlier checks stopped at the
+non-streaming branch, which is why the suite reported green while the live symptom
+persisted. Point it at an older chunk to confirm the new checks fail:
+
+    NINE_ROUTER_CHUNKS=/path/to/old/chunks node proof_test.cjs
+
+`apply_patch.cjs` was extended to apply `p8895.replacements` to `8895.js`, idempotent
+and aborting on anchor drift like the other targets.
+

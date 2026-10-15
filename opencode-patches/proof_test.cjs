@@ -12,6 +12,7 @@ const CHUNKS = process.env.NINE_ROUTER_CHUNKS
   || '/mnt/c/Users/Administrator/AppData/Roaming/npm/node_modules/9router/app/.next-cli-build/server/chunks';
 const c8499 = fs.readFileSync(`${CHUNKS}/8499.js`, 'utf8');
 const c5330 = fs.readFileSync(`${CHUNKS}/5330.js`, 'utf8');
+const c8895 = fs.readFileSync(`${CHUNKS}/8895.js`, 'utf8');
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -122,6 +123,45 @@ if (m >= 0) {
 }
 
 check('old stub description gone', !c8499.includes('This tool is currently unavailable and must not be used'));
+
+// ---------------- 8895.js: streaming (SSE) path ----------------
+// REGRESSION. The four (0,X.HR)(...) sites in 8895.js are all non-streaming JSON
+// responses; the SSE body is assembled separately, so before this fix a streamed tool
+// call carried the raw read_client alias to a client that never declared it:
+//   unknown tool "read_client"
+// The checks above stopped at the non-streaming path, which is why the suite was
+// green while the live symptom persisted.
+const sseAt = c8895.indexOf('k=k.map(s=>s.replace(');
+check('8895.js carries an SSE alias post-pass', sseAt >= 0);
+check('SSE post-pass sits before the [DONE] sentinel',
+  sseAt >= 0 && c8895.indexOf('k.push("data: [DONE]', sseAt) > sseAt);
+
+const sseChunk =
+  '{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function",' +
+  '"function":{"name":"PLACEHOLDER","arguments":"{}"}}]}}]}';
+
+/** Name a client would observe for a streamed tool call, after the shipped rewrite. */
+function streamedName(name) {
+  const line = sseChunk.replace('PLACEHOLDER', name);
+  if (sseAt < 0) return JSON.parse(line).choices[0].delta.tool_calls[0].function.name;
+  const end = c8895.indexOf('k.push("data: [DONE]', sseAt);
+  if (end < 0) throw new Error('SSE post-pass has no terminator');
+  const stmt = c8895.slice(sseAt, end).replace(/,\s*$/, '');
+  const out = new Function('k', stmt + '; return k;')([line]);
+  return JSON.parse(out[0]).choices[0].delta.tool_calls[0].function.name;
+}
+
+for (const [alias, original] of [
+  ['read_client', 'read'], ['read_client2', 'read'],
+  ['shell_client', 'shell'], ['shell_client3', 'shell'],
+]) {
+  const got = streamedName(alias);
+  check('streamed ' + alias + ' -> ' + original, got === original, got);
+}
+for (const name of ['bash', 'glob', 'Read', 'read_client_extra', 'my_client']) {
+  const got = streamedName(name);
+  check('streamed ' + name + ' unchanged', got === name, got);
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

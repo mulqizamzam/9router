@@ -9,7 +9,8 @@ if (!root) { console.error('usage: node apply_patch.cjs <9router-root>'); proces
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'patch_data.json'), 'utf8'));
 const p5330 = path.join(root, 'app/.next-cli-build/server/chunks/5330.js');
 const p8499 = path.join(root, 'app/.next-cli-build/server/chunks/8499.js');
-for (const p of [p5330, p8499]) if (!fs.existsSync(p)) { console.error('missing', p); process.exit(1); }
+const p8895 = path.join(root, 'app/.next-cli-build/server/chunks/8895.js');
+for (const p of [p5330, p8499, p8895]) if (!fs.existsSync(p)) { console.error('missing', p); process.exit(1); }
 
 function subOnce(src, from, to, label) {
   const n = src.split(from).length - 1;
@@ -43,4 +44,12 @@ if (s.includes('placeholder that does nothing')) {
   fs.writeFileSync(p8499, s);
   console.log('WROTE', p8499);
 }
-console.log('DONE. Verify: node --check ' + p5330 + ' ' + p8499 + ' && node proof_test.cjs');
+s = fs.readFileSync(p8895, 'utf8');
+if (s.includes('k=k.map(s=>s.replace(')) {
+  console.log('SKIP 8895.js already patched');
+} else {
+  for (const r of data.p8895.replacements) s = subOnce(s, r.from, r.to, r.label);
+  fs.writeFileSync(p8895, s);
+  console.log('WROTE', p8895);
+}
+console.log('DONE. Verify: node --check ' + p5330 + ' ' + p8499 + ' ' + p8895 + ' && node proof_test.cjs');
