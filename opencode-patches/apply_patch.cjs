@@ -6,6 +6,18 @@
 const fs = require('fs'), path = require('path');
 const root = process.argv[2];
 if (!root) { console.error('usage: node apply_patch.cjs <9router-root>'); process.exit(2); }
+
+// This kit patches the BUILT BUNDLE of one specific release. Upstream fixed the
+// tool-alias bug in source (opencodeFingerprint.js restoreToolNames + the translator
+// response path), so this kit is OBSOLETE for 9router >= 0.5.104: upgrade instead.
+const SUPPORTED_VERSION = '0.5.99';
+const targetVersion = (() => { try { return require(path.join(root, 'package.json')).version } catch { return null } })();
+if (targetVersion !== SUPPORTED_VERSION) {
+  console.error('REFUSING: this kit targets 9router ' + SUPPORTED_VERSION + ', target is ' + (targetVersion || 'unknown'));
+  console.error('Upstream fixed the tool-alias bug in source; upgrade rather than patch the bundle.');
+  process.exit(1);
+}
+console.log('target version OK: ' + targetVersion);
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'patch_data.json'), 'utf8'));
 const p5330 = path.join(root, 'app/.next-cli-build/server/chunks/5330.js');
 const p8499 = path.join(root, 'app/.next-cli-build/server/chunks/8499.js');

@@ -1,3 +1,8 @@
+> **OBSOLETE for 9router >= 0.5.104.** Upstream fixed the tool-alias leak in source:
+> `opencodeFingerprint.js` now exports `restoreToolNames` and `translator/index.js`
+> calls it on the same-format stream path. This kit patches the built bundle of
+> **0.5.99 only**; `apply_patch.cjs` refuses any other version. Upgrade instead.
+
 # 9router opencode /inference/v1 bundle patch
 
 Workaround untuk bug 403 FreeTierError pada 9router npm 0.5.99 (pre-PR #4842 upstream).
