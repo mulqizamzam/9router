@@ -170,3 +170,39 @@ The map is an optimisation, not the source of truth: the alias carries its own i
 Putting the fallback at the point of use covers every consumer of `toolNameMap` at once,
 rather than patching each response builder (there are six in `5330.js` alone, and one in
 `8895.js`).
+
+## The passthrough path (the one this provider actually takes)
+
+Module 71857 has two modes, and the translator context — the only thing that carries
+`toolNameMap` — is built in just one of them:
+
+    function o(...){return n({mode:l /*translate*/, ..., toolNameMap:e, ...})}    // i5
+    function p(a,b,c,d,e,f,g){return n({mode:m /*passthrough*/, provider:a, ...})} // l2  <- no toolNameMap
+    ...
+    C = b===l ? {...(0,d.Ws)(o), toolNameMap:r, ...} : null
+
+So on the passthrough path nothing reverses the alias module 60210 created. The branch
+already parses each complete SSE line into an object, so the rewrite is attached there
+— object level, one place, all payload shapes:
+
+    (function(o){
+      var R=function(v){... /^(read|shell)_client\d*$/ ...};
+      if(Array.isArray(o.choices))for(...of["delta","message"])...t.function.name=R(...)
+      if(Array.isArray(o.output))...u.name=R(...)
+      if(o.item&&"function_call"===o.item.type)...o.item.name=R(...)
+    })(a);
+
+That covers every earlier fix at once: HR, the 8895 SSE builder, and the three
+`toolNameMap` sites all live inside a context passthrough never builds.
+
+### Two kit bugs found while verifying this
+
+- `subOnce` decided idempotency by the *absence of `from`*. The passthrough `from`
+  is a prefix of its own `to`, so it survived patching and was applied twice. `subOnce`
+  now also skips when `to` is already present.
+- The 8499 module guard used `s.includes('placeholder that does nothing')` — text that
+  is present in the ORIGINAL bundle, so on a pristine install the module 60210
+  replacement never ran at all. It now checks for the applied marker `c=_wrap(c)`.
+
+Verified from pristine chunks: `node apply_patch.cjs` applies everything, a second run
+applies nothing, and the result is byte-identical to the live 8499.js and 8895.js.

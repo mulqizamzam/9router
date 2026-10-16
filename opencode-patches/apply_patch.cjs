@@ -13,6 +13,7 @@ const p8895 = path.join(root, 'app/.next-cli-build/server/chunks/8895.js');
 for (const p of [p5330, p8499, p8895]) if (!fs.existsSync(p)) { console.error('missing', p); process.exit(1); }
 
 function subOnce(src, from, to, label) {
+  if (src.includes(to)) { console.log('SKIP [' + label + '] already patched'); return src; }
   const n = src.split(from).length - 1;
   if (n === 0) { console.log('SKIP [' + label + '] already patched'); return src; }
   if (n !== 1) { console.error('FATAL [' + label + ']: ' + n + ' occurrences - bundle version mismatch'); process.exit(1); }
@@ -27,8 +28,8 @@ if (patched5330) fs.writeFileSync(p5330, s);
 
 s = fs.readFileSync(p8499, 'utf8');
 let touched8499 = false;
-if (s.includes('placeholder that does nothing')) {
-  console.log('SKIP 8499.js already patched');
+if (s.includes('c=_wrap(c)')) {
+  console.log('SKIP 8499.js module already patched');
 } else {
   const m = s.indexOf('60210:(a,b,c)=>{');
   if (m < 0) { console.error('FATAL: module 60210 not found'); process.exit(1); }
@@ -51,11 +52,11 @@ for (const r of (data.p8499.replacements || [])) {
 }
 if (touched8499) { fs.writeFileSync(p8499, s); console.log('WROTE', p8499); }
 s = fs.readFileSync(p8895, 'utf8');
-if (s.includes('k=k.map(s=>s.replace(')) {
-  console.log('SKIP 8895.js already patched');
-} else {
-  for (const r of data.p8895.replacements) s = subOnce(s, r.from, r.to, r.label);
-  fs.writeFileSync(p8895, s);
-  console.log('WROTE', p8895);
+let touched8895 = false;
+for (const r of data.p8895.replacements) {
+  const before = s;
+  s = subOnce(s, r.from, r.to, r.label);
+  if (s !== before) touched8895 = true;
 }
+if (touched8895) { fs.writeFileSync(p8895, s); console.log('WROTE', p8895); }
 console.log('DONE. Verify: node --check ' + p5330 + ' ' + p8499 + ' ' + p8895 + ' && node proof_test.cjs');

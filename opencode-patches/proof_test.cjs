@@ -207,5 +207,51 @@ if (helperMatch) {
   check('alias-map miss resolves read_client', false, 'helper absent');
 }
 
+// ---------------- 8895.js: passthrough branch (the actual path) ----------------
+// Module 71857 has two modes. The context that carries `toolNameMap` is built only in
+// "translate":
+//     function o(...){return n({mode:l/*translate*/,...,toolNameMap:e,...})}   // i5
+//     function p(a,b,c,d,e,f,g){return n({mode:m/*passthrough*/,provider:a,...})} // l2
+//     C = b===l ? {...(0,d.Ws)(o),toolNameMap:r,...} : null
+// so on the passthrough path nothing ever reverses the alias module 60210 created.
+// The passthrough branch already parses each complete SSE line into an object, and the
+// rewrite is attached there.
+check('8895.js carries the passthrough alias rewriter', c8895.includes('var R=function(v)'));
+check('8895.js rewrites choices[].delta/message tool names',
+  c8895.includes('t.function.name=R(t.function.name)'));
+check('8895.js rewrites Responses output/item names',
+  c8895.includes('u.name=R(u.name)') && c8895.includes('o.item.name=R(o.item.name)'));
+check('passthrough injection is a terminated statement',
+  c8895.includes('})(a);') && !c8895.includes('})(a),'));
+
+const ptStart = c8895.indexOf('(function(o){var R=function(v){');
+const ptStop = c8895.indexOf('})(a);', ptStart);
+const ptMatch = ptStart >= 0 && ptStop > ptStart ? [c8895.slice(ptStart, ptStop + 1)] : null;
+if (ptMatch) {
+  // eslint-disable-next-line no-eval -- run the bytes shipped in the chunk
+  const rewrite = eval(ptMatch[0] + ')');
+  const cases = [
+    [{ choices: [{ delta: { tool_calls: [{ function: { name: 'read_client' } }] } }] }, 'read'],
+    [{ choices: [{ delta: { tool_calls: [{ function: { name: 'read_client2' } }] } }] }, 'read'],
+    [{ choices: [{ message: { tool_calls: [{ function: { name: 'shell_client3' } }] } }] }, 'shell'],
+    [{ output: [{ type: 'function_call', name: 'read_client' }] }, 'read'],
+    [{ item: { type: 'function_call', name: 'read_client' } }, 'read'],
+  ];
+  for (const [payload, want] of cases) {
+    rewrite(payload);
+    const got = payload.choices?.[0]?.delta?.tool_calls?.[0]?.function?.name
+      ?? payload.choices?.[0]?.message?.tool_calls?.[0]?.function?.name
+      ?? payload.output?.[0]?.name ?? payload.item?.name;
+    check('passthrough rewrite -> ' + want, got === want, got);
+  }
+  const passthrough = [{ choices: [{ delta: { tool_calls: [{ function: { name: 'bash' } }] } }] }];
+  rewrite(passthrough);
+  check('passthrough leaves bash unchanged',
+    passthrough[0].choices[0].delta.tool_calls[0].function.name === 'bash',
+    passthrough[0].choices[0].delta.tool_calls[0].function.name);
+} else {
+  check('passthrough rewriter runs', false, 'not found in chunk');
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);
