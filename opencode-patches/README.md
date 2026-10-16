@@ -206,3 +206,37 @@ That covers every earlier fix at once: HR, the 8895 SSE builder, and the three
 
 Verified from pristine chunks: `node apply_patch.cjs` applies everything, a second run
 applies nothing, and the result is byte-identical to the live 8499.js and 8895.js.
+
+## Why the first passthrough rewrite did nothing
+
+Measured, not inferred. With request logging forced on, the same request was captured on
+both sides of the proxy:
+
+| file | direction | `read_client` as a tool name |
+|---|---|---|
+| `4_req_target.json` | 9Router -> upstream | present (498 tools: `read_client`, `read`, `shell`) |
+| `7_res_client.txt` | 9Router -> client | **present — leaked** |
+
+The client stream differed from the provider stream by exactly one thing: a `usage`
+object appended to the final chunk. The tool-call chunk passed through byte-identical.
+
+The passthrough branch in module 71857 mutates the parsed object — and then decides what
+to emit at the very end:
+
+    let p = a.choices?.[0]?.finish_reason;
+    if (p && !usage)  { ...; b = `data: ${JSON.stringify(a)}\n`; c = !0 }
+    else if (p && A)  { ...; b = `data: ${JSON.stringify(a)}\n`; c = !0 }
+    else (f || j) &&  (b = `data: ${JSON.stringify(a)}\n`, c = !0)
+    ...
+    c || (b = <the ORIGINAL upstream line>)
+
+A tool-call chunk has `finish_reason:null` and needs no normalisation, so `f`, `j` and `p`
+are all falsy, `c` stays false, and the ORIGINAL line is emitted. The rewritten object is
+discarded. Only the final usage chunk (`p` truthy) is re-serialised — which is exactly the
+single difference observed between the two logs.
+
+So the rewrite must set the branch's own re-serialisation flag `j`. That is the whole
+correction: `ch&&(j=!0)` after a name actually changes.
+
+Without the logs this would have been a seventh guess: the rewriter was verified only
+against the parsed object, never against the emit decision that throws it away.

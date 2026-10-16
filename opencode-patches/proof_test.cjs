@@ -218,9 +218,9 @@ if (helperMatch) {
 // rewrite is attached there.
 check('8895.js carries the passthrough alias rewriter', c8895.includes('var R=function(v)'));
 check('8895.js rewrites choices[].delta/message tool names',
-  c8895.includes('t.function.name=R(t.function.name)'));
+  c8895.includes('(t.function.name=n,ch=!0)'));
 check('8895.js rewrites Responses output/item names',
-  c8895.includes('u.name=R(u.name)') && c8895.includes('o.item.name=R(o.item.name)'));
+  c8895.includes('R(u.name)') && c8895.includes('R(o.item.name)'));
 check('passthrough injection is a terminated statement',
   c8895.includes('})(a);') && !c8895.includes('})(a),'));
 
@@ -251,6 +251,40 @@ if (ptMatch) {
     passthrough[0].choices[0].delta.tool_calls[0].function.name);
 } else {
   check('passthrough rewriter runs', false, 'not found in chunk');
+}
+
+// ---------------- 8895.js: the mutation must survive the emit decision ----------------
+// The passthrough branch picks what to emit at the very end:
+//   if (p && !usage) {...b=`data: ${JSON.stringify(a)}\n`;c=!0}
+//   else if (p && A) {...c=!0}
+//   else (f||j) &&   (b=`data: ${JSON.stringify(a)}\n`, c=!0)
+//   c || (b = <ORIGINAL upstream line>)
+// A tool-call chunk has finish_reason:null and needs no normalisation, so f, j and p are
+// all falsy, c stays false and the ORIGINAL line is emitted. Rewriting the parsed object
+// alone is therefore discarded — the flag j must be set for the rewrite to reach the wire.
+{
+  const st = c8895.indexOf('(function(o){var R=function(v){');
+  const sp = c8895.indexOf('})(a);', st);
+  const iife = st >= 0 && sp > st ? c8895.slice(st, sp + 2) : null;
+  check('8895.js passthrough rewriter present', !!iife);
+  check('8895.js passthrough rewriter forces re-serialisation', !!iife && iife.includes('ch&&(j=!0)'));
+  check('branch still declares the emit flag j=!1',
+    /\bj=!1\b/.test(c8895.slice(c8895.indexOf('b===m){let b,'), c8895.indexOf('b===m){let b,') + 220)));
+  if (iife) {
+    // eslint-disable-next-line no-eval -- run the shipped bytes
+    const run = new Function('o', 'let j=false; (' + iife + ')(o); return j;');
+    const nameOf = (o) => o.choices?.[0]?.delta?.tool_calls?.[0]?.function?.name
+      ?? o.choices?.[0]?.message?.tool_calls?.[0]?.function?.name;
+    const alias = { choices: [{ delta: { tool_calls: [{ function: { name: 'read_client' } }] } }] };
+    const alias2 = { choices: [{ message: { tool_calls: [{ function: { name: 'shell_client9' } }] } }] };
+    const plain = { choices: [{ delta: { tool_calls: [{ function: { name: 'bash' } }] } }] };
+    const f1 = run(alias), f2 = run(alias2), f3 = run(plain);
+    check('alias rewrite sets the re-serialisation flag',
+      nameOf(alias) === 'read' && nameOf(alias2) === 'shell' && f1 === true && f2 === true,
+      nameOf(alias) + '/' + f1 + ' ' + nameOf(alias2) + '/' + f2);
+    check('non-alias leaves the flag unset and the name untouched',
+      nameOf(plain) === 'bash' && f3 === false, nameOf(plain) + '/' + f3);
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURES`);
