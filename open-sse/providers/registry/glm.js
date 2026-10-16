@@ -34,6 +34,7 @@ export default {
     planApiKeyName: "zcode-api-key",
   },
   transport: {
+    thinkingFormat: "zai",
     baseUrl: "https://api.z.ai/api/anthropic/v1/messages",
     format: "claude",
     urlSuffix: "?beta=true",

@@ -14,6 +14,7 @@ export default {
   },
   category: "apikey",
   transport: {
+    thinkingFormat: "zai",
     baseUrl: "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
     headers: {},
     usage: {
