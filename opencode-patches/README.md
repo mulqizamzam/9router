@@ -1,7 +1,30 @@
-> **OBSOLETE for 9router >= 0.5.104.** Upstream fixed the tool-alias leak in source:
-> `opencodeFingerprint.js` now exports `restoreToolNames` and `translator/index.js`
-> calls it on the same-format stream path. This kit patches the built bundle of
-> **0.5.99 only**; `apply_patch.cjs` refuses any other version. Upgrade instead.
+## Still required on 0.5.104 (measured, not assumed)
+
+The banner that used to sit here said upstream had fixed this in source. **That was
+wrong.** A pristine 0.5.104 still answers `unknown tool "read_client"`, and every anchor
+this kit patches survives unchanged in that build:
+
+```
+8499 toolNameMap?.get(            : 3
+8499 site A1 / A2 / A3            : 1 / 1 / 1
+8895 passthrough branch           : 1
+8895 (f||j) re-serialisation gate : 1
+8895 verbatim fallback            : 1
+```
+
+Upstream's source-level `restoreToolNames` does not cover this path — it returns the
+payload untouched whenever the recovered rename map is empty, and on this route it is.
+
+### Applying to 0.5.104
+
+`apply-0.5.104.cjs <9router-root>` applies **only the stateless pieces**: the `__dshDa`
+helper, the three `toolNameMap` fallbacks, the passthrough rewriter and the SSE post-pass.
+It deliberately does **not** touch module 60210: 0.5.104 ships a newer version of that
+module and swapping in the 0.5.99-derived one would discard upstream work.
+
+Verified after applying to the running install (D:\npm-global, 0.5.104): all four
+touched chunks parse, the stateless checks in `proof_test.cjs` pass, and the three HR
+checks fail by design — they cover the 0.5.99 module-60210 fix this port omits.
 
 # 9router opencode /inference/v1 bundle patch
 
