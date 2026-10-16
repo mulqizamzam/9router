@@ -166,11 +166,18 @@ function toLevel(cfg) {
   return null;
 }
 
+// Effort values an OpenAI-shaped upstream accepts. Anything else is a provider-local
+// name (Z.AI's toggle "thinking") or "auto", and is rejected as an invalid value.
+const OPENAI_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
+
 function normalizeOpenAILevel(level, supportedLevels) {
-  if (level !== "max" && level !== "ultra") return level;
-  if (supportedLevels?.includes(level)) return level;
-  if (level === "ultra" && supportedLevels?.includes("max")) return "max";
-  return "xhigh";
+  if (level === "max" || level === "ultra") {
+    if (supportedLevels?.includes(level)) return level;
+    if (level === "ultra" && supportedLevels?.includes("max")) return "max";
+    return "xhigh";
+  }
+  // The model cannot disable thinking when we get here, so "reasoning on" is high.
+  return OPENAI_EFFORTS.has(level) ? level : "high";
 }
 
 function toGeminiThinkingLevel(cfg) {

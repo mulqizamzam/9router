@@ -50,3 +50,29 @@ describe("the Z.AI-native thinking field must not reach an OpenAI wire", () => {
     expect(body.thinking).toBeDefined();
   });
 });
+
+// The reported model was oc/glm-5.3-flash-free(thinking). Z.AI's level set is the toggle
+// ["none", "thinking"], so the intent carries the level name "thinking" — not an effort.
+// With the Z.AI format correctly kept off this wire, applyFormat routes to the OpenAI
+// branch, where the old normalizeOpenAILevel returned that name unchanged:
+//
+//   400 [invalid_value] unsupported reasoning_effort value "thinking"
+//
+// The wire accepts none|minimal|low|medium|high|xhigh only. The model cannot disable
+// thinking here, so "reasoning on" is the faithful translation.
+describe("reasoning_effort is always a value the OpenAI wire accepts", () => {
+  it.each([
+    ["thinking", "high"],
+    ["auto", "high"],
+    ["high", "high"],
+    ["max", "xhigh"],
+  ])("level %s becomes %s", (level, expected) => {
+    const body = applyThinking("openai", "glm-5.3-flash-free", {}, "opencode", {
+      mode: level === "auto" ? "auto" : "level",
+      ...(level === "auto" ? {} : { level }),
+    });
+
+    expect(body.reasoning_effort).toBe(expected);
+    expect(body.thinking).toBeUndefined();
+  });
+});
