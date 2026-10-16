@@ -172,5 +172,40 @@ for (const name of ['bash', 'glob', 'Read', 'read_client_extra', 'my_client']) {
   check('streamed ' + name + ' unchanged', got === name, got);
 }
 
+// ---------------- 8499.js: toolNameMap alias fallback ----------------
+// ROOT CAUSE. The opencode executor (module 4493, 5330.js) calls module 60210's Ke,
+// which CREATES the alias `read` -> `read_client`, and never calls a reverser. The
+// reversal happens where a name is resolved from the recovered alias map, and that
+// lookup is `toolNameMap?.get(name) || name` — so when the WeakMap recovery misses, the
+// fallback hands the client the raw alias, which it answers with
+//   unknown tool "read_client"
+// Three such sites exist, all in 8499.js, and each now falls back to a stateless
+// resolver instead of the raw value.
+check('8499.js carries the stateless alias helper', /var __dshDa=function\(n\)/.test(c8499));
+const REWIRED = [
+  'g=b.toolNameMap?.get(d.name)||__dshDa(d.name),',
+  'e=b.toolNameMap?.get(d)||__dshDa(d),',
+  'e=b.toolNameMap?.get(c.name)||__dshDa(c.name);',
+];
+const rewired = REWIRED.filter((site) => c8499.includes(site)).length;
+check('8499.js rewires all 3 toolNameMap fallbacks', rewired === 3, rewired + '/3');
+
+const helperMatch = /var __dshDa=(function\(n\)\{[\s\S]*?\});/.exec(c8499);
+if (helperMatch) {
+  // eslint-disable-next-line no-eval -- run the helper bytes shipped in the chunk
+  const resolve = eval('(' + helperMatch[1] + ')');
+  const miss = new Map(); // the recovered alias map missed
+  const at = (n) => (miss.get(n) !== undefined ? miss.get(n) : resolve(n));
+  for (const [input, want] of [
+    ['read_client', 'read'], ['read_client2', 'read'], ['shell_client3', 'shell'],
+    ['bash', 'bash'], ['glob', 'glob'], ['Read', 'Read'],
+    ['read_client_extra', 'read_client_extra'], ['my_client', 'my_client'],
+  ]) {
+    check('alias-map miss: ' + input + ' -> ' + want, at(input) === want, at(input));
+  }
+} else {
+  check('alias-map miss resolves read_client', false, 'helper absent');
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURES`);
 process.exit(failures === 0 ? 0 : 1);

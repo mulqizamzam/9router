@@ -114,3 +114,59 @@ return k=k.map(s=>s.replace(...)),k.push("data: [DONE]\n\n"),
 `SSE builder still returns its response`), and a third variant is kept as evidence:
 
     NINE_ROUTER_CHUNKS=<dir with the broken 8895.js> node proof_test.cjs   # 2 FAILURES
+## Root cause: nothing ever reverses the alias on the opencode path
+
+The two earlier fixes were correct for the paths they cover, but they are not the path
+this provider takes.
+
+The opencode executor is module `4493` in `5330.js`. It references module 60210 in
+exactly two places, and both are the **request** rewriter:
+
+    (0,m.Ke)(b,!0)   /   (0,m.Ke)(b,!1)
+
+`Ke` is what *creates* the alias (`read` -> `read_client`). The executor never calls
+`HR` or `g4`. So the alias is produced on every request and reversed on none of them
+by the executor itself.
+
+The reversal is supposed to happen where a tool name is resolved from the recovered
+alias map. `8895.js` module `92500` recovers that map with `(0,B.g4)(ak)` — a WeakMap
+keyed by the request-body object — and passes it down as `toolNameMap`. Every place
+that consumes it looks like this:
+
+    toolNameMap?.get(name) || name
+
+When the WeakMap recovery misses, the map is empty and the fallback is the **raw
+alias**. There are three such sites, all in `8499.js`:
+
+| site | role |
+|---|---|
+| `g=b.toolNameMap?.get(d.name)\|\|d.name` | claude stream `tool_use` -> openai `function_call` |
+| `e=b.toolNameMap?.get(d)\|\|d` | tool-call builder |
+| `e=b.toolNameMap?.get(c.name)\|\|c.name` | accumulated tool calls |
+
+That is the leak: the client is handed `read_client`, a name it never declared, and it
+answers `unknown tool "read_client"`.
+
+### Fix
+
+The alias is reversible by construction, so the fallback does not need the map at all.
+One stateless helper is installed at the head of `8499.js`:
+
+```js
+var __dshDa=function(n){if("string"!=typeof n)return n;
+  var m=/^(read|shell)_client\d*$/.exec(n);return m?n.replace(/_client\d*$/,""):n};
+```
+
+and each of the three sites falls back to it instead of the raw value:
+
+    toolNameMap?.get(name) || __dshDa(name)
+
+Only `read`/`shell` aliases are rewritten, so every other tool name is byte-identical,
+and a map hit still wins when the map is present.
+
+### Why this is the right layer
+
+The map is an optimisation, not the source of truth: the alias carries its own inverse.
+Putting the fallback at the point of use covers every consumer of `toolNameMap` at once,
+rather than patching each response builder (there are six in `5330.js` alone, and one in
+`8895.js`).

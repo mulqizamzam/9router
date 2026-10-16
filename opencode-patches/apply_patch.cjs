@@ -26,6 +26,7 @@ const patched5330 = s !== fs.readFileSync(p5330, 'utf8');
 if (patched5330) fs.writeFileSync(p5330, s);
 
 s = fs.readFileSync(p8499, 'utf8');
+let touched8499 = false;
 if (s.includes('placeholder that does nothing')) {
   console.log('SKIP 8499.js already patched');
 } else {
@@ -41,9 +42,14 @@ if (s.includes('placeholder that does nothing')) {
   }
   if (end < 0) { console.error('FATAL: module 60210 end not found'); process.exit(1); }
   s = s.slice(0, m) + data.p8499.newModule60210 + s.slice(end);
-  fs.writeFileSync(p8499, s);
-  console.log('WROTE', p8499);
+  touched8499 = true;
 }
+for (const r of (data.p8499.replacements || [])) {
+  const before = s;
+  s = subOnce(s, r.from, r.to, r.label);
+  if (s !== before) touched8499 = true;
+}
+if (touched8499) { fs.writeFileSync(p8499, s); console.log('WROTE', p8499); }
 s = fs.readFileSync(p8895, 'utf8');
 if (s.includes('k=k.map(s=>s.replace(')) {
   console.log('SKIP 8895.js already patched');
