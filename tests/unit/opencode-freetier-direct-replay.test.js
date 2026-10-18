@@ -5,8 +5,9 @@
 // minute — flagged pool → 403 FreeTierError, direct egress → 200.
 //
 // proxyAwareFetch now inspects a proxied 403 and replays once on the direct
-// egress when the body carries the FreeTierError marker. strictProxy keeps its
-// contract (never leaves the configured path) and non-gate 403s pass through
+// egress when the body carries the FreeTierError marker. Only OpenCode hosts are
+// eligible — the marker alone does not identify the sender. strictProxy keeps
+// its contract (never leaves the configured path) and non-gate 403s pass through
 // untouched.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +26,8 @@ globalThis.fetch = fetchMock;
 vi.mock("undici", () => ({
   Agent: class {},
   ProxyAgent: class {},
+  // proxyDispatcher.js (added in #4987) destructures this lazily.
+  Socks5ProxyAgent: class {},
 }));
 
 const { proxyAwareFetch } = await import("../../open-sse/utils/proxyFetch.js");
@@ -109,5 +112,36 @@ describe("proxied 403 FreeTierError replays direct (#4983)", () => {
 
     expect(res.status).toBe(403);
     expect(await res.text()).toBe(FREE_TIER_403);
+  });
+
+  it("does not replay the marker from another host — the proxied 403 passes through", async () => {
+    proxiedThenDirect({
+      proxiedResponse: () => new Response(FREE_TIER_403, { status: 403, headers: { "content-type": "application/json" } }),
+      directResponse: () => new Response("must not run", { status: 200 }),
+    });
+
+    const res = await proxyAwareFetch("https://api.example.com/v1/chat", { method: "POST", body: "{}" }, PROXY);
+
+    expect(res.status).toBe(403);
+    expect(await res.text()).toBe(FREE_TIER_403);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the rejection readable when the proxied 403 body breaks mid-read", async () => {
+    fetchMock.mockImplementation(async (_url, opts = {}) => {
+      if (opts.dispatcher) {
+        return new Response(new ReadableStream({ start(c) { c.error(new Error("reset mid-body")); } }), {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response("must not run", { status: 200 });
+    });
+
+    const res = await proxyAwareFetch("https://opencode.ai/inference/v1/chat/completions", { method: "POST", body: "{}" }, PROXY);
+
+    expect(res.status).toBe(403);
+    await expect(res.text()).resolves.toBe("");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

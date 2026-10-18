@@ -338,6 +338,13 @@ async function createBypassRequest(parsedUrl, realIP, options) {
 // direct egress → 200.
 const FREE_TIER_ERROR_MARKER = "FreeTierError";
 
+// The marker is a string in a body, not proof of who sent it — any upstream can
+// emit it. Only OpenCode's own lanes gate on the *egress IP*, so the replay is
+// limited to their hosts (opencode / opencode-zen / opencode-go).
+function isFreeTierGateHost(hostname) {
+  return hostname === "opencode.ai" || hostname.endsWith(".opencode.ai");
+}
+
 /** Rebuild a response whose body we buffered while inspecting it. */
 function bufferedResponse(text, original) {
   const headers = new Headers(original.headers);
@@ -351,15 +358,21 @@ function bufferedResponse(text, original) {
  * After a proxied attempt, replay once on the direct egress when upstream
  * rejected the *proxy's IP* (403 FreeTierError). A body already consumed by
  * the first attempt cannot be resent, and strictProxy keeps its contract of
- * never leaving over another path — both return the rejection as-is.
+ * never leaving over another path — both return the rejection as-is. Only
+ * OpenCode hosts are eligible: the marker alone does not identify the sender.
  */
 async function replayFreeTierRejectionDirect(url, options, proxied) {
   if (proxied.status !== 403) return proxied;
+  // Host first: every other provider keeps its untouched, streamed 403 and we
+  // spend no buffer on it.
+  if (!isFreeTierGateHost(targetHost(url))) return proxied;
   let text;
   try {
     text = await proxied.text();
   } catch {
-    return proxied;
+    // The body broke mid-read; hand back a readable rejection rather than one
+    // whose body is already disturbed.
+    return bufferedResponse("", proxied);
   }
   if (!text.includes(FREE_TIER_ERROR_MARKER)) return bufferedResponse(text, proxied);
   if (options?.body && typeof options.body.getReader === "function" && options.body.locked) {
@@ -377,7 +390,7 @@ async function replayFreeTierRejectionDirect(url, options, proxied) {
 
 function targetHost(url) {
   try {
-    return new URL(typeof url === "string" ? url : url.toString()).host;
+    return new URL(typeof url === "string" ? url : url.toString()).hostname;
   } catch {
     return String(url);
   }
