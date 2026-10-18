@@ -1,7 +1,11 @@
 # Unreleased
 
 ## Fixes
+<<<<<<< HEAD
 - **OpenCode Free**: honor the `low|high|max` reasoning efforts of `oc/deepseek-v4.1-flash-free` — the generic DeepSeek level set no longer advertises medium/xhigh, and `low` now reaches the upstream verbatim instead of collapsing to `high`
+=======
+- **Proxy**: add opt-in `?dns=local` for SOCKS5 gateways with domain-target routing issues; preserve remote DNS by default, original TLS/Host identity and proxy rotation. Share the DNS-mode-aware dispatcher with dashboard proxy tests. Local DNS uses the system resolver; see `docs/socks-dns.md` for privacy implications (#4983).
+>>>>>>> fix-proxy-socks5-local-dns
 
 # v0.5.104 (2026-10-15)
 
