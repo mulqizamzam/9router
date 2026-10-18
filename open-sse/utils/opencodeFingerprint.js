@@ -270,9 +270,31 @@ export function takeRenamedToolNames(body) {
 
 // Response side -------------------------------------------------------------
 
+/**
+ * The caller's original name for a concealed fingerprint alias, or "" when `name` is
+ * not one. The alias carries its own inverse — `read` travels as `read_client`, or as
+ * `read_client2` when the caller already declared `read_client` — so a response is
+ * restorable without the request-scoped map, which is keyed by the body object and is
+ * gone whenever that object is rebuilt (a retry) or never observed (a stateless
+ * caller). Names matching this pattern are reserved for the aliases this module
+ * generates.
+ *
+ * @param {unknown} name
+ * @returns {string} the caller's name, or "" when `name` is not a fingerprint alias
+ */
+export function originalFingerprintToolName(name) {
+  const match = /^(read|shell)_client\d*$/.exec(typeof name === "string" ? name.trim() : "");
+  return match ? match[1] : "";
+}
+
+/** The caller's spelling for a sent tool name: the recorded original, else the alias's inverse. */
+function callerToolName(name, map) {
+  return map?.get(name) || originalFingerprintToolName(name) || name;
+}
+
 /** Restore caller tool spellings in supported response/event shapes. */
 export function restoreToolNames(payload, map) {
-  if (!map?.size || !payload) return payload;
+  if (!payload) return payload;
   if (Array.isArray(payload)) return payload.map((item) => restoreToolNames(item, map));
   if (typeof payload !== "object") return payload;
 
@@ -285,53 +307,60 @@ export function restoreToolNames(payload, map) {
   // Claude streaming content_block_start event.
   if (payload.type === "content_block_start") {
     const block = payload.content_block;
-    if (block?.type === "tool_use" && typeof block.name === "string" && map.has(block.name)) {
-      put("content_block", { ...block, name: map.get(block.name) });
+    if (block?.type === "tool_use" && typeof block.name === "string") {
+      const name = callerToolName(block.name, map);
+      if (name !== block.name) put("content_block", { ...block, name });
     }
   }
 
   // Claude non-streaming message body.
   if (Array.isArray(payload.content)) {
-    put("content", payload.content.map((block) =>
-      block?.type === "tool_use" && typeof block.name === "string" && map.has(block.name)
-        ? { ...block, name: map.get(block.name) }
-        : block));
+    const next = payload.content.map((block) => {
+      if (block?.type !== "tool_use" || typeof block.name !== "string") return block;
+      const name = callerToolName(block.name, map);
+      return name === block.name ? block : { ...block, name };
+    });
+    if (next.some((block, i) => block !== payload.content[i])) put("content", next);
   }
 
   // OpenAI Chat Completions, both streaming delta and JSON message shapes.
   if (Array.isArray(payload.choices)) {
-    put("choices", payload.choices.map((choice) => {
+    const nextChoices = payload.choices.map((choice) => {
       let changed = false;
-      const next = { ...choice };
+      const out = { ...choice };
       for (const holder of ["delta", "message"]) {
         const value = choice?.[holder];
         if (!value || !Array.isArray(value.tool_calls) || value.tool_calls.length === 0) continue;
         const calls = value.tool_calls.map((call) => {
           const name = call?.function?.name;
-          if (typeof name === "string" && map.has(name)) {
-            changed = true;
-            return { ...call, function: { ...call.function, name: map.get(name) } };
-          }
-          return call;
+          if (typeof name !== "string") return call;
+          const restored = callerToolName(name, map);
+          if (restored === name) return call;
+          changed = true;
+          return { ...call, function: { ...call.function, name: restored } };
         });
-        next[holder] = { ...value, tool_calls: calls };
+        out[holder] = { ...value, tool_calls: calls };
       }
-      return changed ? next : choice;
-    }));
+      return changed ? out : choice;
+    });
+    if (nextChoices.some((choice, i) => choice !== payload.choices[i])) put("choices", nextChoices);
   }
 
   // OpenAI Responses final JSON body.
   if (Array.isArray(payload.output)) {
-    put("output", payload.output.map((item) =>
-      item?.type === "function_call" && typeof item.name === "string" && map.has(item.name)
-        ? { ...item, name: map.get(item.name) }
-        : item));
+    const nextOutput = payload.output.map((item) => {
+      if (item?.type !== "function_call" || typeof item.name !== "string") return item;
+      const name = callerToolName(item.name, map);
+      return name === item.name ? item : { ...item, name };
+    });
+    if (nextOutput.some((item, i) => item !== payload.output[i])) put("output", nextOutput);
   }
 
   // OpenAI Responses SSE events such as response.output_item.added/done.
   const item = payload.item;
-  if (item?.type === "function_call" && typeof item.name === "string" && map.has(item.name)) {
-    put("item", { ...item, name: map.get(item.name) });
+  if (item?.type === "function_call" && typeof item.name === "string") {
+    const name = callerToolName(item.name, map);
+    if (name !== item.name) put("item", { ...item, name });
   }
 
   return out;

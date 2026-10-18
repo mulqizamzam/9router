@@ -184,6 +184,30 @@ describe("opencodeFingerprint — response side", () => {
     const body = { output: [{ type: "function_call", name: "Edit" }] };
     expect(restoreToolNames(body, map).output[0].name).toBe("Edit");
   });
+
+  it("restores a concealed alias when the request-scoped map is gone", () => {
+    // The map is keyed by the request body object, so a rebuilt body (retry) or a
+    // stateless caller leaves it empty, and the client then received "read_client" —
+    // a name it never declared, which it answers with unknown tool "read_client".
+    const chatBody = { choices: [{ delta: { tool_calls: [{ function: { name: "read_client" } }] } }] };
+    expect(restoreToolNames(chatBody, null).choices[0].delta.tool_calls[0].function.name).toBe("read");
+    expect(restoreToolNames(chatBody, new Map()).choices[0].delta.tool_calls[0].function.name).toBe("read");
+
+    const numbered = { choices: [{ delta: { tool_calls: [{ function: { name: "read_client2" } }] } }] };
+    expect(restoreToolNames(numbered, null).choices[0].delta.tool_calls[0].function.name).toBe("read");
+
+    const event = { type: "response.output_item.added", item: { type: "function_call", name: "shell_client" } };
+    expect(restoreToolNames(event, null).item.name).toBe("shell");
+
+    const final = { output: [{ type: "function_call", name: "read_client" }] };
+    expect(restoreToolNames(final, new Map()).output[0].name).toBe("read");
+  });
+
+  it("lets a recorded rename win over the alias inverse", () => {
+    const body = { output: [{ type: "function_call", name: "read_client" }] };
+    const map = new Map([["read_client", "Read"]]);
+    expect(restoreToolNames(body, map).output[0].name).toBe("Read");
+  });
 });
 
 describe("fingerprintToolKey", () => {
