@@ -1,6 +1,8 @@
 # Unreleased
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **OpenCode Free**: surface MiMo (`oc/mimo-v2.6-flash-free`) thinking to OpenAI-shaped clients — the OpenRouter-backed route streams `reasoning`/`reasoning_details[]` instead of `reasoning_content`, now lifted on the passthrough, in the forced-SSE JSON aggregator and in Antigravity output. The lane advertises the full `none|minimal|low|medium|high|xhigh|max` set, honors `none`, and drops adaptive `reasoning_effort: "auto"` that the chat endpoint answers with 400
 - **OpenCode Free**: honor the `low|high|max` reasoning efforts of `oc/deepseek-v4.1-flash-free` — the generic DeepSeek level set no longer advertises medium/xhigh, and `low` now reaches the upstream verbatim instead of collapsing to `high`
 - **Proxy**: add opt-in `?dns=local` for SOCKS5 gateways with domain-target routing issues; preserve remote DNS by default, original TLS/Host identity and proxy rotation. Share the DNS-mode-aware dispatcher with dashboard proxy tests. Local DNS uses the system resolver; see `docs/socks-dns.md` for privacy implications (#4983).
@@ -18,6 +20,8 @@
 - **UI**: model picker regex/negation search, Select/Deselect All, provider filtering, and per-provider wildcards
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Nous**: add missing attribution tags to API-key requests through compatible Chat Completions connections, preserving caller tags and identities (#4745)
 - **Cursor**: recover long sessions from empty AgentService turns (#4690); hold strictProxy on the AgentService h2 path (#4696)
 - **OpenCode**: encode inverted timestamp in translated session IDs so non-OpenCode clients pass Zen free-tier checks (#4780); inject `reasoning_content` placeholder for Zen multi-turn chats (#4805); move free tier to `/inference/v1` with the v2 client fingerprint (#4842)
@@ -52,6 +56,8 @@
 - **Dashboard**: open 9Remote sidebar item directly to website
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - Avoid Headroom compression warnings caused by large unchanged tool schemas (#4809).
 - **Dashboard**: fix mobile layouts for API Keys card (alignment, code wrap), header breadcrumbs (overflow collision), model chips (full width, break-all), and Claude CLI settings
 - **Gemini**: do not treat properties map as schema node when tool parameter is named `properties` (#4620); rename `$ref` keys in `functionResponse` payloads
@@ -84,6 +90,8 @@
 - **Dashboard**: drop NEW badges in sidebar, mark 9Remote as HOT
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Hermes**: stop breaking the config write when an earlier save left the `model: ""` sentinel behind (duplicate-key handling in `config.yaml`)
 - **Claude**: preserve intentional prefill from non-messages[] source formats; keep a trailing user turn so cleanup never yields assistant prefill
 - **Claude**: cache a tool loop's final tool results with the 4th breakpoint
@@ -116,6 +124,8 @@
 - **Combos**: display vision adapter models in an ordered table view
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Claude**: decloak tool names when `toolNameMap` misses (#4342); update spoofed cli version to 2.1.280 to support Opus 5.5
 - **Providers API**: make POST `/api/providers` O(1) and refuse silent key overwrite (#4350)
 - **Capabilities**: stop caching the catalog source per module copy (#4351)
@@ -140,6 +150,8 @@
 - **i18n**: translate React text rewrites via characterData mutation observer
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Proxy Pools**: keep request headers intact through Vercel/Cloudflare/Deno relays (spreading a `Headers` instance yielded `{}`, dropping auth and content-type)
 - **Xiaomi MiMo login**: keep the session in the httpOnly cookie only, require dashboard auth on the proxy branch, and stop forwarding authorization headers upstream
 
@@ -155,6 +167,8 @@
 - **Qoder CN**: add `qoder-cn` provider for qoder.com.cn with OAuth flow, COSY protocol, and CN gateway routing
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Translator**: map Claude `refusal` stop_reason to `content_filter` and surface explanation; strip replayed reasoning fields for Groq, Mistral, and Cerebras (#4220)
 - **Antigravity**: drop requestType `agent` to avoid false 429 `RESOURCE_EXHAUSTED`; separate weekly and short-window (5-hour) quotas and deduplicate dashboard rows
 - **Responses API**: report usage on `response.completed` so clients can auto-compact (#3432)
@@ -172,6 +186,8 @@
 - **i18n**: integrate Persian (fa) translation
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Cursor**: stop AgentService empty turns (`OUT 0`) and silent hangs — fold system prompts instead of `custom_system_prompt`, send `ModelDetails`, read Composer/Grok `thinking_delta`, ack request-context without echoing MCP tools, and reject IDE execs so the model can continue
 - **RTK**: for Cursor, compress source-format `tool_result` / `role:tool` **before** translation — its translator rewrites those shapes, so post-translate compression missed them. Other providers keep the post-translate pass unchanged
 - **OpenCode / OpenCode Go**: resolve 403 `FreeTierError` and 429 rate limits with canonical session format, valid User-Agent, and stable upstream session reuse; force stream and declare `forceStream` for free-tier SSE aggregation; cloak decoy tools, normalize Muse Free tool choice, and strip prior reasoning items on Responses models; route Union Alpha via Messages API
@@ -197,6 +213,8 @@
 - **CodeBuddy-CN**: replace `deepseek-v4-flash` with `deepseek-v4.1-flash`
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Tools**: scope Claude tool type defaulting to gateways declaring `requireClaudeToolType` — the global default broke Anthropic-compatible endpoints that only accept the legacy typeless tool shape (#3905)
 - **Claude**: cap re-anchored `cache_control` at the 4-marker budget so a spent budget no longer 400s and triggers a full combo failover; wrap bare single-object content turns before the mid-conversation-system fold
 - **Cline / Airforce**: unwrap the `{"success":true,"data":…}` envelope on non-stream chat completions (#3644); add the live Cline/ClinePass model catalog and refresh Airforce free models
@@ -223,6 +241,8 @@
 - **Gemini**: persist and replay `thoughtSignature` scoped by session namespace
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Claude**: normalize adaptive auto effort (`output_config.effort`) (#3792)
 - **Antigravity**: prevent Google anti-abuse rate limits during multi-account refresh (#3813)
 - **Anthropic-compatible**: forward Claude beta flags to nodes fronting Anthropic (#3797)
@@ -247,6 +267,8 @@
 - **i18n**: complete Indonesian translation (1391 keys)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Security**: close SSRF guard bypasses in `ssrfGuard.js` (alternate IPv6 encodings, hostname trailing dots, wildcard DNS resolution check, safe redirect handling) (#3714)
 - **Model markers**: strip the `[1m]` context marker Claude Code appends to model names (`claude-opus-5[1m]`) preventing model resolution failures (#3690)
 - **Claude**: drop `server_tool_use` blocks carrying foreign IDs to avoid Anthropic 400 rejections; never anchor cache breakpoints on `defer_loading` tools (#3567)
@@ -302,6 +324,8 @@
 - **i18n**: pt-BR expanded to 1132 terms
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Claude Code**: add Claude Fable 5.1 and advertise Claude Code 2.1.258 in
   both the request header and billing identity; use its permanent adaptive-thinking
   mode with `output_config.effort`
@@ -401,6 +425,8 @@
   tabs tripping 429; manual refresh (↻) sends `force=1` to bypass the cache
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Docker**: ship `sql.js` in the image so the pure-JS DB fallback can start —
   file tracing carried the package's JS without `dist/sql-wasm.wasm`, so a
   container with no native driver aborted with ENOENT and never got a database
@@ -486,6 +512,8 @@
   token refresh scheduler for all providers
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Providers**: remove Qwen (OAuth flow stopped working reliably)
 - **Passthrough**: detect codex-tui/Codex Desktop as native Codex client — they
   were falling through to the translator and losing fields like `reasoning.summary`
@@ -557,6 +585,8 @@
 - **Usage**: SuperGrok weekly pool via gRPC-web
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Refresh**: rotate `refresh_token` between retry attempts
 - **Kiro**: canonicalize tool history and route API keys correctly
 - **Kiro**: normalize dashboard thinking intensity models
@@ -583,6 +613,8 @@
 - **Dashboard**: ProviderTopology flow animation
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **DB**: resolve better-sqlite3 parameter binding crash
 - **Translator**: pass `service_tier` through OpenAI → Responses conversion
 - **Kiro**: map GPT-5.6 reasoning effort fields
@@ -607,6 +639,8 @@
 - **i18n**: Thai (th) + Persian (fa) translations / README
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Providers**: bulk-add API keys no longer overwrite existing keys (gap-fill `Key N`)
 - **Anthropic**: lowercase `anthropic-version` header to prevent duplication on `/v1/messages`
 - **Alicode-intl**: use DashScope compatible-mode endpoint so standard keys work
@@ -638,6 +672,8 @@
 - **Proxy-Pools**: auto-rotate strategy for no-auth providers (#2409)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Cloudflare-AI**: support accountId in bulk key import (#2449)
 - **DB**: backup on schema change, MCP child cleanup, codex models, usage providers OOM
 - **Codex**: avoid bare-email OAuth dedup (#2477)
@@ -667,6 +703,8 @@
 - **i18n**: add Farsi (fa) language support (#2385)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Thinking**: strip `(level)` suffix from upstream `body.model` so providers no longer reject requests
 - **Translator**: preserve developer instructions in openai-responses conversion (#2434)
 - **count_tokens**: count structured Anthropic blocks (#2419)
@@ -686,6 +724,8 @@
 - **ClinePass**: add provider support — sternelee
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Usage**: dedupe streaming request-details log entries — Qin Li
 - **Claude**: drop foreign thinking signatures in passthrough — decolua
 - Prevent non-SSE stream pipe crash and cross-IdP account overwrites (#2244) — KunN-21
@@ -707,6 +747,8 @@
 - Opt-in Codex auto-ping quota keep-alive — Emirhan
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Responses**: handle response.done terminal events (#2142) — rifuki
 - **Headroom**: skip unsafe responses tool history (#2132) — Sutarto Jordan Chrisfivo
 - **Translator**: map mid-conversation system message to user (claude→openai) — decolua
@@ -731,6 +773,8 @@
 - Overhaul Blackbox provider catalog + WebUI test support — suryacagur
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - Provider thinking compatibility (DeepSeek/Gemini) — Mink Nguyen
 - Stop double-counting streaming usage at source — decolua
 - Usage logging dedupe to reduce stats churn — Mink Nguyen
@@ -764,6 +808,8 @@
 - **CodeBuddy CN**: short model prefix alias "cbcn"
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **MiniMax-M3**: enable vision capability
 - **Headroom**: support Docker sidecar proxy
 - **Antigravity**: image executor fixes
@@ -783,6 +829,8 @@
 - **OpenCode-Go**: align models with official endpoints; route Qwen 3.7 MiniMax via /v1/messages, GLM/Kimi/DeepSeek/MiMo via /chat/completions
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Anthropic-compatible validation**: use POST /v1/messages (GET /models not spec, false "invalid" for valid keys)
 - **CLI tools**: tolerate JSONC configs in all 8 settings routes (opencode, openclaw, kilo, droid, cowork, copilot, claude, cline)
 - **Gemini/Antigravity**: preserve 'pattern' in tool schema translation (glob/grep)
@@ -793,6 +841,8 @@
 # v0.5.4 (2026-06-18)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Kiro**: honor thinking effort budgets
 - **AG/Kiro/Xiaomi**: provider fixes
 - **Combo/Fusion**: flatten tool history in panel calls to prevent 503
@@ -809,6 +859,8 @@
 - **Claude auto-ping** — warms the 5h quota window right after reset so a fresh window starts immediately (per-connection toggle)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - **Claude 429**: stop hammering the OAuth usage endpoint — cache resetAt, throttle quota refresh to 3 min, cool down after a 429 (chat unaffected)
 - **Usage logs always empty**: missing `await` on `getAdapter()` in `getRecentLogs` made `/api/usage/logs` & `/api/usage/request-logs` return nothing
 - **Executors**: strip params unsupported by the provider/model (drops deprecated `temperature` for claude-opus-4 → Anthropic 400)
@@ -833,6 +885,8 @@
 - Kiro: enable multi-endpoint failover for GenerateAssistantResponse (#1722)
 
 ## Fixes
+- **Streaming**: fill a missing `id` on streamed tool-call fragments so strict OpenAI-compatible clients stop aborting the turn with "Expected 'id' to be a string" (#4992)
+- **OpenCode**: restore the caller's tool name on the openaiu2192openai passthrough path, so a fingerprint-renamed tool (`read` u2192 `read_client`) no longer reaches the client as a tool it never declared (#4986, #4994)
 - Security: re-auth on DB export/import + SSRF guard on web fetch
 - Auth: real client IP rate-limiting + remote default-password guard
 - Cerebras/Mistral: strip unsupported `client_metadata` from downstream requests (#1742)
